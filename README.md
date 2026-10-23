@@ -191,7 +191,7 @@ namespace is a `:dependency`. `requiring-resolve` of a quoted var is a
 `:stereotype :interface`. `defrecord` or `deftype` of a protocol is
 `:implements`. External `:require`s and `:import`s become **foreign**
 classes. The overlay fills Clojure members from `.metrics/`. TypeScript,
-Rust, and Python are separate scanners (see
+Rust, Python, and Go are separate scanners (see
 [Language graphs](#language-graphs)): one class per module, with exported
 members as `:ops`. The overlay joins each snapshot by `:ns`, then by
 the class id.
@@ -514,6 +514,35 @@ project module. A base of `Protocol` or `ABC` is `:implements`.
 project name. `list[Animal]` is not. Public module-level functions and
 classes are `:ops`. A module whose public classes are only `Protocol` or
 `ABC` bases, with no public functions, is `:stereotype :interface`.
+
+**Go** (`uml-viewer.go-language.graph-go`) emits one class per package
+(directory). The module path comes from the nearest `go.mod`, and a
+package's `:ns` is its import path with `/` as `.`
+(`finteam/internal/modules/leave` is `finteam.internal.modules.leave`).
+It skips `*_test.go` and directories named `vendor`, `testdata`,
+`target`, `tmp`, or starting with `.` or `_`. An import of a project
+package is a dependency. A standard-library import (first segment has
+no dot) is ignored. Any other import is foreign, named by its repository
+without major-version segments (`github.com/jackc/pgx/v5/pgxpool` is
+`jackc.pgx`). Exported functions, exported types, and methods
+(`Type.Method`) of exported types are `:ops`. A package that exports
+only interfaces is `:stereotype :interface`. Go satisfies interfaces
+implicitly, so the scanner emits no `:implements` edges. The class
+`:file` is the package's first source file; the source window opens the
+file that declares the clicked member.
+
+Go metrics come from `go-metrics/` (a Go command in this repository),
+because crap4go and mutate4go key their reports by the short package
+name. It writes `.metrics/crap.edn` (complexity counted as crap4go does,
+coverage from a `go test -coverprofile` profile) and
+`.metrics/mutate/<namespace>.edn` from saved mutate4go output, one log per
+source file:
+
+```bash
+go run ./go-metrics -module backend -src backend/internal \
+  -profile backend/target/coverage/coverage.out \
+  -mutate-logs .metrics/go-mutate -out .metrics
+```
 
 `merge-scans` links a TypeScript `invoke("read_text")` to the Rust class
 that owns `#[tauri::command] fn read_text`, as a `:dependency`. Two
